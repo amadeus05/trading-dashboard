@@ -68,7 +68,8 @@ function createChart() {
         padding: 10,
         callbacks: {
           label: function(context) {
-            return 'Balance: $' + context.parsed.y.toFixed(2);
+            const value = context.parsed.y ?? 0;
+            return 'Balance: $' + value.toFixed(2);
           }
         }
       }

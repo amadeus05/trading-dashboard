@@ -15,12 +15,17 @@ import {
 } from '@heroicons/vue/24/outline';
 import { dashboardApi } from '../services/api';
 import { isDemoMode } from '../services/mockData';
+import type { HealthState } from '../types';
 
 const router = useRouter();
 
 // Health check states
-const backendStatus = ref<'checking' | 'healthy' | 'unhealthy'>('checking');
-const dbStatus = ref<'checking' | 'healthy' | 'unhealthy'>('checking');
+const backendStatus = ref<HealthState>('checking');
+const dbStatus = ref<HealthState>('checking');
+const journalStatus = ref<HealthState>('checking');
+const backendMessage = ref('Проверка соединения...');
+const dbMessage = ref('Проверка соединения...');
+const journalMessage = ref('Проверка журнала событий...');
 const lastChecked = ref<string>('');
 const responseTime = ref<number>(0);
 const isLoading = ref(false);
@@ -29,6 +34,7 @@ const isLoading = ref(false);
 const buildTime = ref(new Date().toISOString().slice(0, 19).replace('T', ' '));
 const vueVersion = ref('3.5.30');
 const appVersion = ref('1.0.0');
+const appTitle = ref(import.meta.env.VITE_APP_TITLE || 'Trading Bot Dashboard');
 const envMode = ref(import.meta.env.MODE);
 const demoMode = ref(isDemoMode());
 
@@ -41,6 +47,10 @@ async function performHealthCheck() {
     // In demo mode, simulate healthy checks
     backendStatus.value = 'healthy';
     dbStatus.value = 'healthy';
+    journalStatus.value = 'healthy';
+    backendMessage.value = 'Demo mode API stub';
+    dbMessage.value = 'Demo mode database stub';
+    journalMessage.value = 'Demo mode journal stub';
     responseTime.value = 0;
     lastChecked.value = new Date().toISOString().slice(0, 19).replace('T', ' ');
     return;
@@ -50,17 +60,22 @@ async function performHealthCheck() {
   const startTime = performance.now();
   
   try {
-    // Try to fetch metrics as health check
-    await dashboardApi.getMetrics();
+    const health = await dashboardApi.getHealth();
     
-    responseTime.value = Math.round(performance.now() - startTime);
-    backendStatus.value = 'healthy';
-    
-    // If we got here, assume DB is also healthy
-    dbStatus.value = 'healthy';
-  } catch (error) {
+    responseTime.value = health.api.response_time_ms || Math.round(performance.now() - startTime);
+    backendStatus.value = health.api.status;
+    dbStatus.value = health.database.status;
+    journalStatus.value = health.event_journal?.status || 'checking';
+    backendMessage.value = health.api.message;
+    dbMessage.value = health.database.message;
+    journalMessage.value = health.event_journal?.message || 'Event journal status was not reported';
+  } catch {
     backendStatus.value = 'unhealthy';
     dbStatus.value = 'unhealthy';
+    journalStatus.value = 'unhealthy';
+    backendMessage.value = 'Не удалось подключиться к API';
+    dbMessage.value = 'Статус базы недоступен из-за ошибки API';
+    journalMessage.value = 'Статус журнала недоступен из-за ошибки API';
     responseTime.value = Math.round(performance.now() - startTime);
   } finally {
     lastChecked.value = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -70,10 +85,6 @@ async function performHealthCheck() {
 
 function goBack() {
   router.back();
-}
-
-function goHome() {
-  router.push('/');
 }
 
 function formatStatus(status: string): string {
@@ -209,9 +220,7 @@ onUnmounted(() => {
             />
           </div>
           <div class="mt-4 text-xs text-slate-400">
-            <p v-if="backendStatus === 'healthy'">API отвечает корректно</p>
-            <p v-else-if="backendStatus === 'unhealthy'">Не удалось подключиться к API</p>
-            <p v-else>Проверка соединения...</p>
+            <p>{{ backendMessage }}</p>
           </div>
         </div>
 
@@ -245,9 +254,41 @@ onUnmounted(() => {
             />
           </div>
           <div class="mt-4 text-xs text-slate-400">
-            <p v-if="dbStatus === 'healthy'">Соединение с БД установлено</p>
-            <p v-else-if="dbStatus === 'unhealthy'">Проблемы с подключением к БД</p>
-            <p v-else>Проверка соединения...</p>
+            <p>{{ dbMessage }}</p>
+          </div>
+        </div>
+
+        <!-- Event Journal Status -->
+        <div 
+          class="glass-panel rounded-xl p-5 border-2 transition-all duration-300"
+          :class="getStatusBg(journalStatus)"
+        >
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-3">
+              <div 
+                class="w-12 h-12 rounded-xl flex items-center justify-center"
+                :class="journalStatus === 'healthy' ? 'bg-emerald-500/20' : journalStatus === 'unhealthy' ? 'bg-red-500/20' : 'bg-amber-500/20'"
+              >
+                <CircleStackIcon 
+                  class="w-6 h-6"
+                  :class="getStatusColor(journalStatus)"
+                />
+              </div>
+              <div>
+                <h3 class="font-semibold text-white">Event Journal</h3>
+                <p class="text-sm" :class="getStatusColor(journalStatus)">
+                  {{ formatStatus(journalStatus) }}
+                </p>
+              </div>
+            </div>
+            <component 
+              :is="getStatusIcon(journalStatus)"
+              class="w-6 h-6"
+              :class="getStatusColor(journalStatus)"
+            />
+          </div>
+          <div class="mt-4 text-xs text-slate-400">
+            <p>{{ journalMessage }}</p>
           </div>
         </div>
 
@@ -301,22 +342,22 @@ onUnmounted(() => {
       <!-- Overall Status -->
       <div 
         class="glass-panel rounded-xl p-6 text-center"
-        :class="backendStatus === 'healthy' && dbStatus === 'healthy' 
+        :class="backendStatus === 'healthy' && dbStatus === 'healthy' && journalStatus !== 'unhealthy'
           ? 'bg-emerald-500/5 border border-emerald-500/30' 
           : 'bg-red-500/5 border border-red-500/30'"
       >
         <div class="flex items-center justify-center gap-3 mb-2">
           <component 
-            :is="backendStatus === 'healthy' && dbStatus === 'healthy' ? CheckCircleIcon : XCircleIcon"
+            :is="backendStatus === 'healthy' && dbStatus === 'healthy' && journalStatus !== 'unhealthy' ? CheckCircleIcon : XCircleIcon"
             class="w-8 h-8"
-            :class="backendStatus === 'healthy' && dbStatus === 'healthy' ? 'text-emerald-400' : 'text-red-400'"
+            :class="backendStatus === 'healthy' && dbStatus === 'healthy' && journalStatus !== 'unhealthy' ? 'text-emerald-400' : 'text-red-400'"
           />
           <h2 class="text-2xl font-bold text-white">
-            {{ backendStatus === 'healthy' && dbStatus === 'healthy' ? 'Все системы работают' : 'Обнаружены проблемы' }}
+            {{ backendStatus === 'healthy' && dbStatus === 'healthy' && journalStatus !== 'unhealthy' ? 'Все системы работают' : 'Обнаружены проблемы' }}
           </h2>
         </div>
         <p class="text-slate-400">
-          {{ backendStatus === 'healthy' && dbStatus === 'healthy' 
+          {{ backendStatus === 'healthy' && dbStatus === 'healthy' && journalStatus !== 'unhealthy'
             ? 'Все компоненты системы функционируют нормально.' 
             : 'Некоторые компоненты недоступны. Проверьте соединение.' }}
         </p>
@@ -360,7 +401,7 @@ onUnmounted(() => {
     <footer class="glass-panel border-t border-slate-700">
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between text-sm text-slate-500">
-          <span>Paper Trading System</span>
+          <span>{{ appTitle }}</span>
           <span>v{{ appVersion }}</span>
         </div>
       </div>

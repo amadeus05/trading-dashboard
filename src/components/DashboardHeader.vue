@@ -14,17 +14,29 @@ import {
 import { isDemoMode } from '../services/mockData';
 
 interface Props {
+  appTitle?: string;
+  botName?: string;
+  modeLabel?: string;
   exchange: string;
   timeframe: string;
   htfTimeframe: string;
   leverage: number;
   onRefresh: () => void;
   isAutoRefreshEnabled?: boolean;
+  isAutoRefreshPaused?: boolean;
   countdown?: string;
   progressPercent?: number;
 }
 
-defineProps<Props>();
+withDefaults(defineProps<Props>(), {
+  appTitle: 'Trading Bot Dashboard',
+  botName: 'Trading Bot',
+  modeLabel: '',
+  isAutoRefreshEnabled: false,
+  isAutoRefreshPaused: false,
+  countdown: '',
+  progressPercent: 100,
+});
 
 const emit = defineEmits<{
   pause: [];
@@ -82,9 +94,9 @@ onUnmounted(() => {
             <ChartBarIcon class="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 class="text-xl font-bold text-white">Paper Trading Dashboard</h1>
+            <h1 class="text-xl font-bold text-white">{{ appTitle }}</h1>
             <p class="text-xs text-slate-400">
-              {{ demoMode ? 'Demo Mode - Fake Data' : 'Live Trading Analytics' }}
+              {{ demoMode ? `${botName} - Demo Data` : `${botName}${modeLabel ? ` - ${modeLabel}` : ''}` }}
             </p>
           </div>
         </div>
@@ -132,6 +144,17 @@ onUnmounted(() => {
               ></div>
             </div>
           </div>
+
+          <button
+            v-if="isAutoRefreshEnabled"
+            @click="isAutoRefreshPaused ? handleResume() : handlePause()"
+            class="hidden md:flex px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors items-center gap-1"
+            :title="isAutoRefreshPaused ? 'Resume auto-refresh' : 'Pause auto-refresh'"
+          >
+            <PlayIcon v-if="isAutoRefreshPaused" class="w-4 h-4 text-emerald-400" />
+            <PauseIcon v-else class="w-4 h-4 text-amber-400" />
+            <span>{{ isAutoRefreshPaused ? 'Resume' : 'Pause' }}</span>
+          </button>
           
           <div class="px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">
             <BuildingLibraryIcon class="w-4 h-4 text-indigo-400 inline mr-2" />

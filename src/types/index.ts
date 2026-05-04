@@ -28,6 +28,16 @@ export interface DashboardMetrics {
   filtered_trades_count?: number;
 }
 
+export interface AppIdentity {
+  app_title: string;
+  bot_name: string;
+  mode: string;
+  exchange?: string;
+  account?: string;
+  strategy?: string;
+  environment?: string;
+}
+
 export interface OpenPosition {
   id: string | number;
   symbol: string;
@@ -71,6 +81,7 @@ export interface Filters {
 }
 
 export interface DashboardPayload {
+  app?: AppIdentity;
   metrics: DashboardMetrics;
   open_positions: OpenPosition[];
   recent_trades: Trade[];
@@ -79,6 +90,24 @@ export interface DashboardPayload {
   demo_mode: boolean;
   demo_message: string;
   current_time: string;
+}
+
+export type HealthState = 'healthy' | 'unhealthy' | 'checking';
+
+export interface HealthComponent {
+  status: HealthState;
+  message: string;
+  response_time_ms?: number;
+  last_event_ts?: string;
+}
+
+export interface HealthPayload {
+  api: HealthComponent;
+  database: HealthComponent;
+  event_journal?: HealthComponent;
+  current_time: string;
+  version?: string;
+  environment?: string;
 }
 
 export interface FilterState {

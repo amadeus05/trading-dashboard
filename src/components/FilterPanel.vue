@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { FunnelIcon, CalendarIcon, CurrencyDollarIcon, ArrowPathIcon, CheckIcon, XMarkIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
 import type { Filters, FilterState } from '../types';
 
@@ -124,10 +124,13 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-// Add click outside listener
-if (typeof window !== 'undefined') {
+onMounted(() => {
   window.addEventListener('click', handleClickOutside);
-}
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleClickOutside);
+});
 
 // Reset function
 function resetFilters() {
@@ -254,6 +257,7 @@ const hiddenExitReasonsCount = computed(() => Math.max(0, props.modelValue.selec
                 type="checkbox" 
                 :checked="modelValue.selectedSymbols.includes(sym)"
                 @click.stop
+                @change.stop="toggleSymbol(sym)"
                 class="accent-indigo-500 cursor-pointer"
               >
               <span>{{ sym }}</span>
@@ -330,6 +334,7 @@ const hiddenExitReasonsCount = computed(() => Math.max(0, props.modelValue.selec
                 type="checkbox" 
                 :checked="modelValue.selectedExitReasons.includes(reason)"
                 @click.stop
+                @change.stop="toggleExitReason(reason)"
                 class="accent-indigo-500 cursor-pointer"
               >
               <span>{{ reason }}</span>

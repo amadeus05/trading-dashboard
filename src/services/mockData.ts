@@ -182,6 +182,14 @@ export function generateDemoDashboardPayload(): DashboardPayload {
   const metrics = calculateMetrics(trades, openPositions);
   
   return {
+    app: {
+      app_title: import.meta.env.VITE_APP_TITLE || 'Trading Bot Dashboard',
+      bot_name: import.meta.env.VITE_BOT_NAME || 'Demo Trading Bot',
+      mode: 'demo',
+      exchange: 'BYBIT',
+      strategy: 'demo-preview',
+      environment: import.meta.env.MODE,
+    },
     metrics,
     open_positions: openPositions,
     recent_trades: trades.slice(0, 20),

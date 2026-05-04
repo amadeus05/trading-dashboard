@@ -19,8 +19,10 @@ import AssetHeat from './AssetHeat.vue';
 
 // State
 const loading = ref(true);
+const isFetching = ref(false);
 const error = ref<string | null>(null);
 const dashboardData = ref<DashboardPayload | null>(null);
+let latestRequestId = 0;
 
 // Filter state
 const filterState = ref<FilterState>({
@@ -42,7 +44,7 @@ const progressPercent = computed(() => {
 });
 let refreshTimer: number | null = null;
 let countdownTimer: number | null = null;
-let isPaused = false;
+const isPaused = ref(false);
 
 // Computed
 const metrics = computed(() => dashboardData.value?.metrics);
@@ -54,6 +56,7 @@ const demoMode = computed(() => dashboardData.value?.demo_mode || false);
 const demoMessage = computed(() => dashboardData.value?.demo_message || '');
 const currentTime = computed(() => dashboardData.value?.current_time || '');
 const hasActiveFilters = computed(() => dashboardData.value?.filters?.has_active_filters || false);
+const appIdentity = computed(() => dashboardData.value?.app);
 
 // Format countdown for display
 const formattedCountdown = computed(() => {
@@ -64,7 +67,11 @@ const formattedCountdown = computed(() => {
 
 // Methods
 async function fetchDashboard() {
-  loading.value = true;
+  if (isFetching.value) return;
+
+  const requestId = ++latestRequestId;
+  isFetching.value = true;
+  loading.value = !dashboardData.value;
   error.value = null;
   
   try {
@@ -75,7 +82,8 @@ async function fetchDashboard() {
       direction: filterState.value.direction || undefined,
       exit_reasons: filterState.value.selectedExitReasons.length > 0 ? filterState.value.selectedExitReasons : undefined,
     });
-    
+    if (requestId !== latestRequestId) return;
+
     dashboardData.value = data;
     
     // Update filter state from server response
@@ -92,15 +100,16 @@ async function fetchDashboard() {
     // Reset countdown after successful fetch
     resetCountdown();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to fetch dashboard data';
+    if (requestId === latestRequestId) {
+      error.value = err instanceof Error ? err.message : 'Failed to fetch dashboard data';
+    }
     console.error('Error fetching dashboard:', err);
   } finally {
-    loading.value = false;
+    if (requestId === latestRequestId) {
+      loading.value = false;
+      isFetching.value = false;
+    }
   }
-}
-
-function handleApplyFilters() {
-  fetchDashboard();
 }
 
 function handleResetFilters() {
@@ -127,14 +136,14 @@ function startAutoRefresh() {
   
   // Start countdown timer (updates every second)
   countdownTimer = window.setInterval(() => {
-    if (!isPaused && countdown.value > 0) {
+    if (!isPaused.value && countdown.value > 0) {
       countdown.value--;
     }
   }, 1000);
   
   // Start refresh timer
   refreshTimer = window.setInterval(() => {
-    if (!isPaused) {
+    if (!isPaused.value) {
       fetchDashboard();
     }
   }, REFRESH_INTERVAL * 1000);
@@ -152,11 +161,11 @@ function stopAutoRefresh() {
 }
 
 function pauseAutoRefresh() {
-  isPaused = true;
+  isPaused.value = true;
 }
 
 function resumeAutoRefresh() {
-  isPaused = false;
+  isPaused.value = false;
 }
 
 // Pause auto-refresh when user is interacting with filters
@@ -227,8 +236,12 @@ watch(() => demoMode.value, (isDemo) => {
         :leverage="metrics.leverage"
         :on-refresh="fetchDashboard"
         :is-auto-refresh-enabled="isAutoRefreshEnabled"
+        :is-auto-refresh-paused="isPaused"
         :countdown="formattedCountdown"
         :progress-percent="progressPercent"
+        :app-title="appIdentity?.app_title"
+        :bot-name="appIdentity?.bot_name"
+        :mode-label="appIdentity?.mode"
         @pause="pauseAutoRefresh"
         @resume="resumeAutoRefresh"
       />
@@ -304,7 +317,7 @@ watch(() => demoMode.value, (isDemo) => {
       <!-- Footer -->
       <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-slate-500 text-sm">
         <p class="flex items-center justify-center gap-2 flex-wrap">
-          <span>Paper Trading System | Обновлено: {{ currentTime }}</span>
+          <span>{{ appIdentity?.app_title || 'Trading Bot Dashboard' }} | Обновлено: {{ currentTime }}</span>
           <span v-if="isAutoRefreshEnabled" class="text-indigo-400">
             | Авто-обновление через {{ formattedCountdown }}
           </span>

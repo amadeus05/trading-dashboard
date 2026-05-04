@@ -3,13 +3,15 @@ import Dashboard from '../components/Dashboard.vue';
 import Health from '../views/Health.vue';
 import NotFound from '../views/NotFound.vue';
 
+const appTitle = import.meta.env.VITE_APP_TITLE || 'Trading Bot Dashboard';
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Dashboard',
     component: Dashboard,
     meta: {
-      title: 'Paper Trading Dashboard',
+      title: appTitle,
     },
   },
   {
@@ -17,7 +19,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Health',
     component: Health,
     meta: {
-      title: 'System Health - Paper Trading',
+      title: `System Health - ${appTitle}`,
     },
   },
   // Catch all 404 route - must be last

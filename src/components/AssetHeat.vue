@@ -54,9 +54,9 @@ function getBarWidth(pnl: number): string {
   return `${Math.max(percentage, 5)}%`; // Minimum 5% width for visibility
 }
 
-function formatPnl(pnl: number): string {
+function formatCurrency(pnl: number): string {
   const sign = pnl >= 0 ? '+' : '';
-  return `${sign}${pnl.toFixed(0)}%`;
+  return `${sign}$${pnl.toFixed(2)}`;
 }
 </script>
 
@@ -85,7 +85,7 @@ function formatPnl(pnl: number): string {
             class="text-sm font-semibold"
             :class="asset.pnl >= 0 ? 'text-cyan-400' : 'text-red-400'"
           >
-            {{ formatPnl(asset.pnl) }}
+            {{ formatCurrency(asset.pnl) }}
           </span>
         </div>
         

@@ -7,6 +7,7 @@ import {
 } from '@heroicons/vue/24/outline';
 
 const router = useRouter();
+const appTitle = import.meta.env.VITE_APP_TITLE || 'Trading Bot Dashboard';
 
 function goHome() {
   router.push('/');
@@ -63,7 +64,7 @@ function goBack() {
         <div class="flex items-center justify-center gap-4 text-xs text-slate-500">
           <span class="flex items-center gap-1">
             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            Paper Trading Dashboard
+            {{ appTitle }}
           </span>
           <span>|</span>
           <span>v1.0.0</span>
