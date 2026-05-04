@@ -55,6 +55,13 @@ function generateDemoTrades(count: number = 50): Trade[] {
       exit_reason: baseTrade.reason,
       exit_time: exitTime.toISOString().replace('T', ' ').slice(0, 16) + ' UTC',
       is_win: finalPnl > 0,
+      entry_time: new Date(exitTime.getTime() - (2 + (i % 8)) * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC',
+      duration_minutes: (2 + (i % 8)) * 60,
+      fee: Number((baseTrade.notional * 0.0008).toFixed(3)),
+      p_long: baseTrade.direction === 'LONG' ? 0.58 + (i % 5) * 0.04 : 0.32 + (i % 4) * 0.03,
+      p_short: baseTrade.direction === 'SHORT' ? 0.59 + (i % 5) * 0.04 : 0.31 + (i % 4) * 0.03,
+      signal_gap: 0.08 + (i % 6) * 0.025,
+      risk_pct: 0.75 + (i % 4) * 0.15,
     });
   }
   
@@ -119,6 +126,8 @@ function calculateMetrics(trades: Trade[], openPositions: OpenPosition[]): Dashb
   
   const realizedPnl = trades.reduce((sum, t) => sum + t.pnl, 0);
   const walletBalance = INITIAL_BALANCE + realizedPnl;
+  const unrealizedPnl = openPositions.reduce((sum, _position, idx) => sum + (idx % 2 === 0 ? 4.5 : -2.8), 0);
+  const equity = walletBalance + unrealizedPnl;
   
   // Calculate max drawdown
   let peak = INITIAL_BALANCE;
@@ -145,29 +154,49 @@ function calculateMetrics(trades: Trade[], openPositions: OpenPosition[]): Dashb
   const shortsCount = openPositions.filter(p => p.direction === 'SHORT').length;
   
   const openMargin = openPositions.reduce((sum, p) => sum + p.entry_notional / 10, 0);
+  const exposureLong = openPositions.filter(p => p.direction === 'LONG').reduce((sum, p) => sum + p.entry_notional, 0);
+  const exposureShort = openPositions.filter(p => p.direction === 'SHORT').reduce((sum, p) => sum + p.entry_notional, 0);
+  const riskAtStop = openPositions.reduce((sum, p) => sum + p.entry_notional * (p.stop_pct / 100), 0);
+  const expectancy = totalClosed > 0 ? (winCount / totalClosed) * (winCount > 0 ? totalWins / winCount : 0) - (lossCount / totalClosed) * (lossCount > 0 ? totalLosses / lossCount : 0) : 0;
+  const payoffRatio = lossCount > 0 && totalLosses > 0 ? (totalWins / Math.max(winCount, 1)) / (totalLosses / lossCount) : 0;
   
   return {
-    exchange: 'BINANCE',
+    exchange: 'BYBIT',
     timeframe: '1h',
     htf_timeframe: '4h',
     leverage: 10,
     initial_balance: INITIAL_BALANCE,
+    equity,
     wallet_balance: walletBalance,
     realized_pnl: realizedPnl,
+    unrealized_pnl: unrealizedPnl,
+    pnl_today: trades.filter(t => new Date(t.exit_time).getTime() > Date.now() - 24 * 60 * 60 * 1000).reduce((sum, t) => sum + t.pnl, 0),
+    pnl_7d: trades.filter(t => new Date(t.exit_time).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).reduce((sum, t) => sum + t.pnl, 0),
     open_margin: openMargin,
     available_balance: walletBalance - openMargin,
+    exposure_total: exposureLong + exposureShort,
+    exposure_long: exposureLong,
+    exposure_short: exposureShort,
+    risk_at_stop: riskAtStop,
     open_positions_count: openPositions.length,
     closed_trades_count: totalClosed,
     win_rate: totalClosed > 0 ? (winCount / totalClosed) * 100 : 0,
-    profit_factor: totalLosses > 0 ? totalWins / totalLosses : Infinity,
+    profit_factor: totalLosses > 0 ? totalWins / totalLosses : 0,
+    expectancy,
+    payoff_ratio: payoffRatio,
     avg_win: winCount > 0 ? totalWins / winCount : 0,
     avg_loss: lossCount > 0 ? totalLosses / lossCount : 0,
     max_drawdown_pct: maxDrawdown,
+    recovery_factor: maxDrawdown > 0 ? realizedPnl / (INITIAL_BALANCE * maxDrawdown / 100) : 0,
     best_trade: Math.max(...trades.map(t => t.pnl), 0),
     worst_trade: Math.min(...trades.map(t => t.pnl), 0),
     total_trades: totalClosed + openPositions.length,
+    trades_today: trades.filter(t => new Date(t.exit_time).getTime() > Date.now() - 24 * 60 * 60 * 1000).length,
     longs_count: longsCount,
     shorts_count: shortsCount,
+    last_market_event_time: new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC',
+    last_signal_time: trades[0]?.exit_time || '',
+    system_status: 'running',
     filtered_realized_pnl: realizedPnl,
     filtered_win_rate: totalClosed > 0 ? (winCount / totalClosed) * 100 : 0,
     filtered_trades_count: totalClosed,

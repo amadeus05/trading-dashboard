@@ -6,22 +6,37 @@ export interface DashboardMetrics {
   htf_timeframe: string;
   leverage: number;
   initial_balance: number;
+  equity: number;
   wallet_balance: number;
   realized_pnl: number;
+  unrealized_pnl: number;
+  pnl_today: number;
+  pnl_7d: number;
   open_margin: number;
   available_balance: number;
+  exposure_total: number;
+  exposure_long: number;
+  exposure_short: number;
+  risk_at_stop: number;
   open_positions_count: number;
   closed_trades_count: number;
   win_rate: number;
   profit_factor: number;
+  expectancy: number;
+  payoff_ratio: number;
   avg_win: number;
   avg_loss: number;
   max_drawdown_pct: number;
+  recovery_factor: number;
   best_trade: number;
   worst_trade: number;
   total_trades: number;
+  trades_today: number;
   longs_count: number;
   shorts_count: number;
+  last_market_event_time: string;
+  last_signal_time: string;
+  system_status: 'running' | 'paused' | 'error' | 'idle';
   // Filtered metrics
   filtered_realized_pnl?: number;
   filtered_win_rate?: number;
@@ -62,6 +77,13 @@ export interface Trade {
   exit_reason: string;
   exit_time: string;
   is_win: boolean;
+  entry_time?: string;
+  duration_minutes?: number;
+  fee?: number;
+  p_long?: number | null;
+  p_short?: number | null;
+  signal_gap?: number | null;
+  risk_pct?: number | null;
 }
 
 export interface EquityPoint {

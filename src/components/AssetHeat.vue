@@ -34,6 +34,7 @@ const assetHeatData = computed(() => {
     pnl: stats.pnl,
     trades: stats.trades,
     winRate: (stats.wins / stats.trades) * 100,
+    avgTrade: stats.pnl / stats.trades,
   }));
   
   // Sort by absolute P&L value (descending)
@@ -58,6 +59,11 @@ function formatCurrency(pnl: number): string {
   const sign = pnl >= 0 ? '+' : '';
   return `${sign}$${pnl.toFixed(2)}`;
 }
+
+function formatCompactCurrency(value: number): string {
+  const sign = value >= 0 ? '+' : '-';
+  return `${sign}$${Math.abs(value).toFixed(1)}`;
+}
 </script>
 
 <template>
@@ -78,9 +84,12 @@ function formatCurrency(pnl: number): string {
       >
         <!-- Symbol and PnL Row -->
         <div class="flex items-center justify-between mb-1.5">
-          <span class="text-sm font-medium text-white tracking-wide">
-            {{ asset.symbol }}
-          </span>
+          <div>
+            <span class="text-sm font-medium text-white tracking-wide">{{ asset.symbol }}</span>
+            <div class="text-[11px] text-slate-500">
+              {{ asset.trades }} trades | {{ asset.winRate.toFixed(1) }}% WR | avg {{ formatCompactCurrency(asset.avgTrade) }}
+            </div>
+          </div>
           <span 
             class="text-sm font-semibold"
             :class="asset.pnl >= 0 ? 'text-cyan-400' : 'text-red-400'"

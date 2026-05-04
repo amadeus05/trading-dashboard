@@ -286,7 +286,7 @@ watch(() => demoMode.value, (isDemo) => {
             />
 
             <!-- Statistics Panel -->
-            <StatsPanel :metrics="metrics" />
+            <StatsPanel :metrics="metrics" :trades="recentTrades" />
 
             <!-- Recent Trades -->
             <TradesTable
